@@ -1,5 +1,6 @@
 // Hybrid savings calculations
 
+export type VehicleType = 'mhev' | 'phev' | 'petrol';
 export type HybridType = 'mhev' | 'phev';
 export type DrivingProfile = 'city' | 'mixed' | 'highway';
 export type ChargingHabit = 'daily' | 'most' | 'few' | 'rare';
