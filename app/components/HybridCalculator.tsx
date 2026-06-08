@@ -21,6 +21,18 @@ const formatCurrency = (num: number) => {
 
 const formatFuel = (num: number) => num.toFixed(1);
 
+const formatBreakEvenTime = (years: number) => {
+  if (!Number.isFinite(years) || years <= 0) return '0 years';
+  
+  const wholeYears = Math.floor(years);
+  const remainingMonths = Math.round((years - wholeYears) * 12);
+  
+  if (wholeYears === 0 && remainingMonths === 0) return 'Less than 1 month';
+  if (wholeYears === 0) return `${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`;
+  if (remainingMonths === 0) return `${wholeYears} year${wholeYears !== 1 ? 's' : ''}`;
+  return `${wholeYears} year${wholeYears !== 1 ? 's' : ''} ${remainingMonths} month${remainingMonths !== 1 ? 's' : ''}`;
+};
+
 export default function HybridCalculator() {
   const [annualKm, setAnnualKm] = useState<number | string>(15000);
   const [fuelPrice, setFuelPrice] = useState<number | string>(2.8);
@@ -127,18 +139,27 @@ export default function HybridCalculator() {
   const vehicleBCostPerYear = vehicleBBreakdown.totalCost;
   const vehicleALitersPerYear = vehicleABreakdown.litersPerYear;
   const vehicleBLitersPerYear = vehicleBBreakdown.litersPerYear;
-  const litersSavedPerYear = vehicleBLitersPerYear - vehicleALitersPerYear;
-  const priceDifference = vehicleAPriceNum - vehicleBPriceNum;
+  const litersSavedPerYear = Math.abs(vehicleALitersPerYear - vehicleBLitersPerYear);
 
-  const {
-    annualSavings,
-    fiveYearSavings: netFiveYearSavings,
-    breakEvenMonths,
-  } = calculateSavings(vehicleBCostPerYear, vehicleACostPerYear, priceDifference);
-  const fuelSavingsFiveYear = annualSavings * 5;
+  // Determine which vehicle is more expensive to buy
+  const moreExpensiveVehicle = vehicleAPriceNum > vehicleBPriceNum ? 'A' : vehicleBPriceNum > vehicleAPriceNum ? 'B' : null;
+  const cheaperVehicle = vehicleAPriceNum < vehicleBPriceNum ? 'A' : vehicleBPriceNum < vehicleAPriceNum ? 'B' : null;
+  const priceDifference = Math.abs(vehicleAPriceNum - vehicleBPriceNum);
+
+  // Determine which vehicle has higher running costs
+  const higherCostVehicle = vehicleACostPerYear > vehicleBCostPerYear ? 'A' : vehicleBCostPerYear > vehicleACostPerYear ? 'B' : null;
+  const lowerCostVehicle = vehicleACostPerYear < vehicleBCostPerYear ? 'A' : vehicleBCostPerYear < vehicleACostPerYear ? 'B' : null;
+  const costDifference = Math.abs(vehicleACostPerYear - vehicleBCostPerYear);
+
+  // Calculate savings (always positive if there are savings)
+  const annualSavings = costDifference;
+
+  // Calculate break-even based on price difference and annual savings
+  const breakEvenMonths = annualSavings > 0 && priceDifference > 0 ? (priceDifference / annualSavings) * 12 : 0;
   const breakEvenYears = breakEvenMonths / 12;
-  const fiveYearMarkerPercent =
-    breakEvenMonths > 0 ? Math.min(100, (60 / breakEvenMonths) * 100) : 100;
+  const fiveYearMarkerPercent = breakEvenMonths > 0 ? Math.min(100, (60 / breakEvenMonths) * 100) : 100;
+  const fuelSavingsFiveYear = annualSavings * 5;
+  const netFiveYearSavings = (annualSavings * 5) - priceDifference;
 
   return (
     <div className="min-h-screen bg-slate-950 p-3 sm:p-6 md:p-12 pb-16 sm:pb-20">
@@ -266,14 +287,14 @@ export default function HybridCalculator() {
                 ? '—'
                 : priceDifference <= 0
                   ? '0'
-                  : `${breakEvenMonths}`}
+                  : `${Math.round(breakEvenMonths)} months`}
             </p>
             <p className="text-gray-500 text-xs sm:text-sm">
               {annualSavings <= 0
                 ? 'No fuel savings'
                 : priceDifference <= 0
                   ? 'Immediate savings'
-                  : `${(breakEvenMonths / 12).toFixed(1)} years`}
+                  : formatBreakEvenTime(breakEvenYears)}
             </p>
           </div>
         </div>
@@ -318,15 +339,15 @@ export default function HybridCalculator() {
                 </div>
                 {litersSavedPerYear > 0 ? (
                   <p className="text-sm text-slate-300 leading-relaxed">
-                    {vehicleAName} uses{' '}
+                    {vehicleALitersPerYear < vehicleBLitersPerYear ? vehicleAName : vehicleBName} uses{' '}
                     <span className="text-white font-medium">
                       {Math.round(litersSavedPerYear).toLocaleString()} litres less
                     </span>{' '}
-                    per year than {vehicleBName}.
+                    per year than {vehicleALitersPerYear < vehicleBLitersPerYear ? vehicleBName : vehicleAName}.
                   </p>
                 ) : (
                   <p className="text-sm text-slate-400 leading-relaxed">
-                    With these figures, {vehicleAName} doesn&apos;t use less fuel than {vehicleBName}.
+                    Both vehicles use the same amount of fuel per year.
                   </p>
                 )}
               </BreakdownCard>
@@ -353,20 +374,14 @@ export default function HybridCalculator() {
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {annualSavings > 0 ? (
                     <>
-                      Every year, {vehicleAName} saves you{' '}
+                      Every year, {lowerCostVehicle === 'A' ? vehicleAName : vehicleBName} saves you{' '}
                       <span className="text-emerald-400 font-medium">
                         {formatCurrency(annualSavings)}
                       </span>{' '}
-                      in running costs compared to {vehicleBName}.
+                      in running costs compared to {higherCostVehicle === 'A' ? vehicleAName : vehicleBName}.
                     </>
                   ) : (
-                    <>
-                      {vehicleBName} is{' '}
-                      <span className="text-red-400 font-medium">
-                        {formatCurrency(Math.abs(annualSavings))}
-                      </span>{' '}
-                      cheaper to run each year with these numbers.
-                    </>
+                    <>Both vehicles have the same running costs.</>
                   )}
                 </p>
               </BreakdownCard>
@@ -394,19 +409,11 @@ export default function HybridCalculator() {
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {priceDifference > 0 ? (
                     <>
-                      {vehicleAName} costs{' '}
+                      {moreExpensiveVehicle === 'A' ? vehicleAName : vehicleBName} costs{' '}
                       <span className="text-white font-medium">
                         {formatCurrency(priceDifference)} more
                       </span>{' '}
-                      to buy. Your yearly fuel savings need to cover that before you&apos;re truly ahead.
-                    </>
-                  ) : priceDifference < 0 ? (
-                    <>
-                      {vehicleAName} is actually{' '}
-                      <span className="text-emerald-400 font-medium">
-                        {formatCurrency(Math.abs(priceDifference))} cheaper
-                      </span>{' '}
-                      to buy — and it saves on fuel too.
+                      to buy than {cheaperVehicle === 'A' ? vehicleAName : vehicleBName}. Your yearly fuel savings need to cover that before you&apos;re truly ahead.
                     </>
                   ) : (
                     <>Both vehicles are the same price. Any fuel savings go straight to your pocket.</>
@@ -440,7 +447,7 @@ export default function HybridCalculator() {
                           5 years
                         </span>
                         <span className="text-blue-400">
-                          Break-even · {breakEvenYears.toFixed(1)} yrs
+                          Break-even · {formatBreakEvenTime(breakEvenYears)}
                         </span>
                       </div>
                     </div>
@@ -450,7 +457,7 @@ export default function HybridCalculator() {
                           After 5 years you&apos;re{' '}
                           <span className="text-emerald-400 font-medium">
                             {formatCurrency(netFiveYearSavings)} ahead
-                          </span>
+                          </span>{' '}
                           — fuel savings have covered the extra purchase price.
                         </>
                       ) : (
@@ -465,7 +472,7 @@ export default function HybridCalculator() {
                           </span>{' '}
                           once you count the higher sticker price. You&apos;d break even around{' '}
                           <span className="text-blue-400 font-medium">
-                            year {breakEvenYears.toFixed(1)}
+                            {formatBreakEvenTime(breakEvenYears)}
                           </span>
                           .
                         </>
@@ -474,7 +481,7 @@ export default function HybridCalculator() {
                   </>
                 ) : annualSavings > 0 && priceDifference <= 0 ? (
                   <p className="text-sm text-slate-300 leading-relaxed">
-                    {vehicleAName} costs the same or less upfront{' '}
+                    {cheaperVehicle === 'A' ? vehicleAName : vehicleBName} costs the same or less upfront{' '}
                     <span className="text-emerald-400 font-medium">and</span> saves you{' '}
                     <span className="text-emerald-400 font-medium">
                       {formatCurrency(annualSavings)}
@@ -483,7 +490,7 @@ export default function HybridCalculator() {
                   </p>
                 ) : (
                   <p className="text-sm text-slate-300 leading-relaxed">
-                    With these numbers, {vehicleBName} costs less to run. {vehicleAName} won&apos;t
+                    With these numbers, {higherCostVehicle === 'A' ? vehicleAName : vehicleBName} costs less to run. {lowerCostVehicle === 'A' ? vehicleAName : vehicleBName} won&apos;t
                     make up the difference through fuel savings alone.
                   </p>
                 )}
@@ -496,7 +503,7 @@ export default function HybridCalculator() {
                 </p>
                 <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-light">
                   {annualSavings <= 0 ? (
-                    <>{vehicleBName} wins on running costs with these inputs.</>
+                    <>{higherCostVehicle === 'A' ? vehicleAName : vehicleBName} wins on running costs with these inputs.</>
                   ) : netFiveYearSavings >= 0 ? (
                     <>
                       You save{' '}
@@ -515,13 +522,13 @@ export default function HybridCalculator() {
                       <span className="text-emerald-400 font-normal">
                         {formatCurrency(annualSavings)}/yr
                       </span>{' '}
-                      on fuel, but {vehicleAName}&apos;s{' '}
+                      on fuel, but {moreExpensiveVehicle === 'A' ? vehicleAName : vehicleBName}&apos;s{' '}
                       <span className="text-white font-normal">
                         {formatCurrency(priceDifference)}
                       </span>{' '}
                       price premium means you need about{' '}
                       <span className="text-blue-400 font-normal">
-                        {breakEvenYears.toFixed(1)} years
+                        {formatBreakEvenTime(breakEvenYears)}
                       </span>{' '}
                       to come out ahead.
                     </>
