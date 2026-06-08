@@ -1,7 +1,8 @@
 {
-  "name": "baic.harryludemann.com",
-  "version": "0.1.0",
+  "name": "hybrid-savings-calculator",
+  "version": "1.0.0",
   "private": true,
+  "description": "Hybrid vs petrol fuel savings and break-even calculator",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,6 +10,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@next/third-parties": "^16.2.7",
     "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4"

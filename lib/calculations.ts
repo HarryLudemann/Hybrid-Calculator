@@ -27,12 +27,10 @@ export function calculateSavings(
   const annualSavings = petrolAnnualCost - hybridAnnualCost;
   const fiveYearSavings = annualSavings * 5 - priceDifference;
 
-  // Calculate break-even in months
-  const monthlyPriceDifference = priceDifference / 12;
-  const monthlyFuelSavings = annualSavings / 12;
+  // Months until cumulative fuel savings cover the upfront price premium
   const breakEvenMonths =
-    monthlyFuelSavings > 0
-      ? Math.ceil(monthlyPriceDifference / monthlyFuelSavings)
+    annualSavings > 0 && priceDifference > 0
+      ? Math.ceil((priceDifference / annualSavings) * 12)
       : 0;
 
   return {
@@ -43,38 +41,3 @@ export function calculateSavings(
     breakEvenMonths: Math.max(0, breakEvenMonths),
   };
 }
-
-export const VEHICLES = [
-  {
-    id: 'bj30-hybrid',
-    name: 'BAIC BJ30 Hybrid',
-    type: 'hybrid',
-    fuelEconomy: 6.8,
-    price: 28900,
-    image: '/vehicles/bj30-hybrid.jpg',
-  },
-  {
-    id: 'x55',
-    name: 'BAIC X55',
-    type: 'petrol',
-    fuelEconomy: 8.5,
-    price: 26900,
-    image: '/vehicles/x55.jpg',
-  },
-  {
-    id: 'b30',
-    name: 'BAIC B30',
-    type: 'petrol',
-    fuelEconomy: 7.2,
-    price: 21900,
-    image: '/vehicles/b30.jpg',
-  },
-  {
-    id: 'x7',
-    name: 'BAIC X7',
-    type: 'petrol',
-    fuelEconomy: 9.1,
-    price: 32900,
-    image: '/vehicles/x7.jpg',
-  },
-];
