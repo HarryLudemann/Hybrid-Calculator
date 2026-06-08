@@ -23,7 +23,7 @@ const formatFuel = (num: number) => num.toFixed(1);
 export default function HybridCalculator() {
   const [annualKm, setAnnualKm] = useState<number | string>(15000);
   const [fuelPrice, setFuelPrice] = useState<number | string>(2.8);
-  const [hybridType, setHybridType] = useState<HybridType>('phev');
+  const [hybridType, setHybridType] = useState<HybridType>('mhev');
   const [hybridFuel, setHybridFuel] = useState<number | string>(6.5);
   const [hybridPrice, setHybridPrice] = useState<number | string>(44990);
   const [drivingProfile, setDrivingProfile] = useState<DrivingProfile>('mixed');
