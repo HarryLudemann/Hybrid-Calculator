@@ -1,9 +1,18 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { calculateSavings } from '@/lib/calculations';
+import {
+  calculateMhevCost,
+  calculatePetrolCost,
+  calculatePhevCost,
+  calculateSavings,
+  type ChargingHabit,
+  type DrivingProfile,
+  type HybridType,
+} from '@/lib/calculations';
 
 const formatCurrency = (num: number) => {
+  if (!Number.isFinite(num)) return '$0';
   const rounded = Math.round(num);
   const formatted = Math.abs(rounded).toLocaleString('en-NZ');
   return rounded < 0 ? `-$${formatted}` : `$${formatted}`;
@@ -14,8 +23,15 @@ const formatFuel = (num: number) => num.toFixed(1);
 export default function HybridCalculator() {
   const [annualKm, setAnnualKm] = useState<number | string>(15000);
   const [fuelPrice, setFuelPrice] = useState<number | string>(2.8);
+  const [hybridType, setHybridType] = useState<HybridType>('phev');
   const [hybridFuel, setHybridFuel] = useState<number | string>(6.5);
   const [hybridPrice, setHybridPrice] = useState<number | string>(44990);
+  const [drivingProfile, setDrivingProfile] = useState<DrivingProfile>('mixed');
+  const [evRange, setEvRange] = useState<number | string>(50);
+  const [evConsumption, setEvConsumption] = useState<number | string>(18);
+  const [electricityPrice, setElectricityPrice] = useState<number | string>(0.28);
+  const [avgTripKm, setAvgTripKm] = useState<number | string>(15);
+  const [chargingHabit, setChargingHabit] = useState<ChargingHabit>('daily');
   const [petrolFuel, setPetrolFuel] = useState<number | string>(8.5);
   const [petrolPrice, setPetrolPrice] = useState<number | string>(38990);
 
@@ -34,32 +50,45 @@ export default function HybridCalculator() {
   const petrolPriceNum = toNumber(petrolPrice);
 
   const priceDifference = hybridPriceNum - petrolPriceNum;
+  const petrolCostPerYear = calculatePetrolCost(kmNum, priceNum, petrolFuelNum);
+  const petrolLitersPerYear = (kmNum / 100) * petrolFuelNum;
+
+  const hybridBreakdown =
+    hybridType === 'phev'
+      ? calculatePhevCost({
+          kmPerYear: kmNum,
+          fuelPrice: priceNum,
+          petrolModeEconomy: hybridFuelNum,
+          evRange: toNumber(evRange),
+          evConsumption: toNumber(evConsumption),
+          electricityPrice: toNumber(electricityPrice),
+          avgTripKm: toNumber(avgTripKm),
+          chargingHabit,
+        })
+      : calculateMhevCost({
+          kmPerYear: kmNum,
+          fuelPrice: priceNum,
+          fuelEconomy: hybridFuelNum,
+          drivingProfile,
+        });
+
+  const hybridCostPerYear = hybridBreakdown.totalCost;
+  const hybridLitersPerYear = hybridBreakdown.litersPerYear;
+  const litersSavedPerYear = petrolLitersPerYear - hybridLitersPerYear;
+
   const {
-    petrolAnnualCost: petrolCostPerYear,
-    hybridAnnualCost: hybridCostPerYear,
     annualSavings,
     fiveYearSavings: netFiveYearSavings,
     breakEvenMonths,
-  } = calculateSavings(
-    kmNum,
-    priceNum,
-    petrolFuelNum,
-    hybridFuelNum,
-    priceDifference
-  );
-
-  // For display purposes
-  const petrolLitersPerYear = (kmNum / 100) * petrolFuelNum;
-  const hybridLitersPerYear = (kmNum / 100) * hybridFuelNum;
-  const litersSavedPerYear = petrolLitersPerYear - hybridLitersPerYear;
+  } = calculateSavings(petrolCostPerYear, hybridCostPerYear, priceDifference);
   const fuelSavingsFiveYear = annualSavings * 5;
   const breakEvenYears = breakEvenMonths / 12;
   const fiveYearMarkerPercent =
     breakEvenMonths > 0 ? Math.min(100, (60 / breakEvenMonths) * 100) : 100;
 
   return (
-    <div className="min-h-screen bg-slate-950 p-3 sm:p-6 md:p-12">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-slate-950 p-3 sm:p-6 md:p-12 pb-16 sm:pb-20">
+      <div className="max-w-5xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-10 md:mb-12">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-light text-white mb-2">
@@ -99,83 +128,152 @@ export default function HybridCalculator() {
         </div>
 
         {/* Vehicles Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-10 md:mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-10 md:mb-12 items-stretch">
           {/* Hybrid Vehicle */}
-          <div className="bg-slate-900/30 rounded-xl p-5 sm:p-6 md:p-8 border border-slate-800 hover:border-red-900/50 transition">
+          <div className="bg-slate-900/30 rounded-xl p-5 sm:p-6 md:p-8 border border-slate-800 hover:border-red-900/50 transition flex flex-col">
             <div className="mb-6 sm:mb-7 md:mb-8">
               <h2 className="text-white text-2xl sm:text-3xl md:text-4xl font-light mb-2 sm:mb-3">Hybrid</h2>
               <div className="w-12 sm:w-16 h-1 bg-red-600 rounded-full"></div>
             </div>
 
-            <div className="space-y-4 sm:space-y-5 md:space-y-6">
-              <div>
-                <label className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">Fuel Economy (L/100km)</label>
-                <input
-                  type="number"
-                  value={hybridFuel}
-                  onChange={(e) => setHybridFuel(e.target.value === '' ? '' : Number(e.target.value))}
-                  step="0.1"
-                  min="0"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800 text-white text-base sm:text-lg rounded-lg border border-slate-700 focus:border-red-600 focus:outline-none transition"
-                />
-                <p className="text-gray-500 text-xs sm:text-sm mt-1 sm:mt-2">{hybridFuel === '' ? '0.0' : formatFuel(toNumber(hybridFuel))} L/100km</p>
-              </div>
+            <div className="space-y-4 sm:space-y-5 md:space-y-6 flex-1 flex flex-col">
+              <HybridTypeSelector value={hybridType} onChange={setHybridType} />
 
-              <div>
-                <label className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">Price (NZD)</label>
-                <input
-                  type="number"
-                  value={hybridPrice}
-                  onChange={(e) => setHybridPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                  min="0"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800 text-white text-base sm:text-lg rounded-lg border border-slate-700 focus:border-red-600 focus:outline-none transition"
-                />
-                <p className="text-gray-500 text-xs sm:text-sm mt-1 sm:mt-2">{hybridPrice === '' ? '$0' : formatCurrency(toNumber(hybridPrice))}</p>
-              </div>
+              {hybridType === 'mhev' ? (
+                <>
+                  <NumberField
+                    label="Fuel economy (L/100km)"
+                    value={hybridFuel}
+                    onChange={setHybridFuel}
+                    step={0.1}
+                    hint={`${hybridFuel === '' ? '0.0' : formatFuel(toNumber(hybridFuel))} L/100km`}
+                  />
+                  <SegmentedControl
+                    label="Driving mix"
+                    value={drivingProfile}
+                    onChange={setDrivingProfile}
+                    options={[
+                      { value: 'city', label: 'City' },
+                      { value: 'mixed', label: 'Mixed' },
+                      { value: 'highway', label: 'Highway' },
+                    ]}
+                  />
+                  <p className="text-xs text-slate-500 leading-relaxed -mt-2">
+                    Mild hybrids assist the engine but can&apos;t drive on battery alone. City driving
+                    typically sees a slightly bigger benefit.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <NumberField
+                      label="EV range (km)"
+                      value={evRange}
+                      onChange={setEvRange}
+                      step={1}
+                      hint="Distance on a full charge"
+                    />
+                    <NumberField
+                      label="EV use (kWh/100km)"
+                      value={evConsumption}
+                      onChange={setEvConsumption}
+                      step={0.1}
+                      hint="Electric driving efficiency"
+                    />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <NumberField
+                      label="Electricity ($/kWh)"
+                      value={electricityPrice}
+                      onChange={setElectricityPrice}
+                      step={0.01}
+                      hint="Home charging rate"
+                    />
+                    <NumberField
+                      label="Petrol mode (L/100km)"
+                      value={hybridFuel}
+                      onChange={setHybridFuel}
+                      step={0.1}
+                      hint="When the battery is empty"
+                    />
+                  </div>
+                  <NumberField
+                    label="Average trip (km)"
+                    value={avgTripKm}
+                    onChange={setAvgTripKm}
+                    step={1}
+                    hint="Typical one-way or round-trip distance"
+                  />
+                  <SegmentedControl
+                    label="How often you charge"
+                    value={chargingHabit}
+                    onChange={setChargingHabit}
+                    options={[
+                      { value: 'daily', label: 'Daily' },
+                      { value: 'most', label: 'Most days' },
+                      { value: 'few', label: 'Few/wk' },
+                      { value: 'rare', label: 'Rarely' },
+                    ]}
+                  />
+                  <p className="text-xs text-slate-500 leading-relaxed -mt-2">
+                    Short trips within EV range and regular charging mean more kilometres on
+                    electricity, less petrol.
+                  </p>
+                </>
+              )}
 
-              <div className="bg-slate-800/50 rounded-lg p-4 sm:p-5 md:p-6 border border-slate-700 mt-6 sm:mt-7 md:mt-8">
-                <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3">Annual Fuel Cost</p>
+              <NumberField
+                label="Price (NZD)"
+                value={hybridPrice}
+                onChange={setHybridPrice}
+                hint={hybridPrice === '' ? '$0' : formatCurrency(toNumber(hybridPrice))}
+              />
+
+              <div className="bg-slate-800/50 rounded-lg p-4 sm:p-5 md:p-6 border border-slate-700 mt-auto">
+                <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3">
+                  {hybridType === 'phev' ? 'Annual Running Cost' : 'Annual Fuel Cost'}
+                </p>
                 <p className="text-3xl sm:text-4xl md:text-5xl font-light text-red-500">
                   {formatCurrency(hybridCostPerYear)}
                 </p>
+                {hybridType === 'phev' && hybridBreakdown.electricCost > 0 && (
+                  <p className="text-sm text-slate-400 mt-2">
+                    {formatCurrency(hybridBreakdown.electricCost)} electricity +{' '}
+                    {formatCurrency(hybridBreakdown.fuelCost)} fuel
+                  </p>
+                )}
+                {hybridType === 'phev' && hybridBreakdown.electricPercent > 0 && (
+                  <p className="text-xs text-emerald-500/80 mt-1">
+                    ~{Math.round(hybridBreakdown.electricPercent)}% of km on electric
+                  </p>
+                )}
               </div>
             </div>
           </div>
 
           {/* Petrol Vehicle */}
-          <div className="bg-slate-900/30 rounded-xl p-5 sm:p-6 md:p-8 border border-slate-800 hover:border-slate-700 transition">
+          <div className="bg-slate-900/30 rounded-xl p-5 sm:p-6 md:p-8 border border-slate-800 hover:border-slate-700 transition flex flex-col">
             <div className="mb-6 sm:mb-7 md:mb-8">
               <h2 className="text-white text-2xl sm:text-3xl md:text-4xl font-light mb-2 sm:mb-3">Petrol</h2>
               <div className="w-12 sm:w-16 h-1 bg-slate-600 rounded-full"></div>
             </div>
 
-            <div className="space-y-4 sm:space-y-5 md:space-y-6">
-              <div>
-                <label className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">Fuel Economy (L/100km)</label>
-                <input
-                  type="number"
-                  value={petrolFuel}
-                  onChange={(e) => setPetrolFuel(e.target.value === '' ? '' : Number(e.target.value))}
-                  step="0.1"
-                  min="0"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800 text-white text-base sm:text-lg rounded-lg border border-slate-700 focus:border-slate-600 focus:outline-none transition"
-                />
-                <p className="text-gray-500 text-xs sm:text-sm mt-1 sm:mt-2">{petrolFuel === '' ? '0.0' : formatFuel(toNumber(petrolFuel))} L/100km</p>
-              </div>
-
-              <div>
-                <label className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">Price (NZD)</label>
-                <input
-                  type="number"
-                  value={petrolPrice}
-                  onChange={(e) => setPetrolPrice(e.target.value === '' ? '' : Number(e.target.value))}
-                  min="0"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800 text-white text-base sm:text-lg rounded-lg border border-slate-700 focus:border-slate-600 focus:outline-none transition"
-                />
-                <p className="text-gray-500 text-xs sm:text-sm mt-1 sm:mt-2">{petrolPrice === '' ? '$0' : formatCurrency(toNumber(petrolPrice))}</p>
-              </div>
-
-              <div className="bg-slate-800/50 rounded-lg p-4 sm:p-5 md:p-6 border border-slate-700 mt-6 sm:mt-7 md:mt-8">
+            <div className="space-y-4 sm:space-y-5 md:space-y-6 flex-1 flex flex-col">
+              <NumberField
+                label="Fuel economy (L/100km)"
+                value={petrolFuel}
+                onChange={setPetrolFuel}
+                step={0.1}
+                hint={`${petrolFuel === '' ? '0.0' : formatFuel(toNumber(petrolFuel))} L/100km`}
+              />
+              <NumberField
+                label="Price (NZD)"
+                value={petrolPrice}
+                onChange={setPetrolPrice}
+                hint={petrolPrice === '' ? '$0' : formatCurrency(toNumber(petrolPrice))}
+              />
+              <div className="flex-1 min-h-[1px]" aria-hidden="true" />
+              <div className="bg-slate-800/50 rounded-lg p-4 sm:p-5 md:p-6 border border-slate-700 mt-auto">
                 <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3">Annual Fuel Cost</p>
                 <p className="text-3xl sm:text-4xl md:text-5xl font-light text-slate-300">
                   {formatCurrency(petrolCostPerYear)}
@@ -188,16 +286,16 @@ export default function HybridCalculator() {
         {/* Results Section */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 md:mb-12">
           {/* Annual Savings */}
-          <div className="bg-slate-900/30 rounded-lg p-4 sm:p-6 border border-slate-800">
+          <div className="bg-slate-900/30 rounded-lg p-4 sm:p-6 border border-slate-800 min-h-[8.5rem]">
             <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3">Annual Savings</p>
-            <p className="text-3xl sm:text-4xl md:text-5xl font-light text-emerald-500 mb-1">
-              {formatCurrency(Math.max(0, annualSavings))}
+            <p className={`text-3xl sm:text-4xl md:text-5xl font-light mb-1 ${annualSavings >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+              {formatCurrency(annualSavings)}
             </p>
-            <p className="text-gray-500 text-xs sm:text-sm">per year</p>
+            <p className="text-gray-500 text-xs sm:text-sm">running costs / yr</p>
           </div>
 
           {/* 5-Year Savings */}
-          <div className="bg-slate-900/30 rounded-lg p-4 sm:p-6 border border-slate-800">
+          <div className="bg-slate-900/30 rounded-lg p-4 sm:p-6 border border-slate-800 min-h-[8.5rem]">
             <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3">5-Year Savings</p>
             <p className={`text-3xl sm:text-4xl md:text-5xl font-light mb-1 ${netFiveYearSavings >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
               {formatCurrency(netFiveYearSavings)}
@@ -206,7 +304,7 @@ export default function HybridCalculator() {
           </div>
 
           {/* Break-Even */}
-          <div className="bg-slate-900/30 rounded-lg p-4 sm:p-6 border border-slate-800">
+          <div className="bg-slate-900/30 rounded-lg p-4 sm:p-6 border border-slate-800 min-h-[8.5rem]">
             <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3">Break-Even</p>
             <p className="text-3xl sm:text-4xl md:text-5xl font-light text-blue-500 mb-1">
               {annualSavings <= 0
@@ -226,11 +324,13 @@ export default function HybridCalculator() {
         </div>
 
         {/* How it adds up */}
-        <section className="relative overflow-hidden rounded-2xl border border-slate-800/80 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-950">
-          <div className="pointer-events-none absolute -top-20 left-1/2 h-56 w-[28rem] -translate-x-1/2 rounded-full bg-red-600/8 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-0 right-0 h-40 w-40 rounded-full bg-emerald-500/5 blur-3xl" />
+        <section className="relative isolate rounded-2xl border border-slate-800/80 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-950">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" aria-hidden="true">
+            <div className="absolute -top-20 left-1/2 h-56 w-[28rem] -translate-x-1/2 rounded-full bg-red-600/10 blur-3xl" />
+            <div className="absolute bottom-0 right-0 h-40 w-40 rounded-full bg-emerald-500/5 blur-3xl" />
+          </div>
 
-          <div className="relative p-6 sm:p-8 md:p-10">
+          <div className="relative z-10 p-6 sm:p-8 md:p-10 pb-8 sm:pb-10">
             <p className="text-red-500/90 text-[11px] font-medium tracking-[0.25em] uppercase mb-3">
               Behind the numbers
             </p>
@@ -238,57 +338,104 @@ export default function HybridCalculator() {
               How it adds up
             </h2>
             <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-2xl mb-10">
-              Three simple ideas: how much fuel each car uses, what that costs you per year,
-              and whether the hybrid&apos;s higher price pays for itself over time.
+              {hybridType === 'phev'
+                ? 'We split your driving between electric and petrol based on trip length, EV range, and how often you charge — then compare total running costs.'
+                : 'How much fuel each car uses, what that costs per year, and whether the hybrid\u2019s higher price pays for itself over time.'}
             </p>
 
             <div className="space-y-5 sm:space-y-6">
               {/* 1 — Fuel use */}
               <BreakdownCard
-                title="Fuel use"
-                subtitle={`Driving ${kmNum.toLocaleString()} km per year`}
+                title={hybridType === 'phev' ? 'How you drive' : 'Fuel use'}
+                subtitle={`${kmNum.toLocaleString()} km per year`}
               >
-                <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                  <FuelStat
-                    label="Petrol"
-                    value={`${Math.round(petrolLitersPerYear).toLocaleString()} L`}
-                    detail={`at ${formatFuel(petrolFuelNum)} L/100km`}
-                    accent="slate"
-                  />
-                  <FuelStat
-                    label="Hybrid"
-                    value={`${Math.round(hybridLitersPerYear).toLocaleString()} L`}
-                    detail={`at ${formatFuel(hybridFuelNum)} L/100km`}
-                    accent="red"
-                  />
-                </div>
-                {litersSavedPerYear > 0 ? (
-                  <p className="text-sm text-slate-300 leading-relaxed">
-                    The hybrid uses{' '}
-                    <span className="text-white font-medium">
-                      {Math.round(litersSavedPerYear).toLocaleString()} litres less
-                    </span>{' '}
-                    each year — that&apos;s{' '}
-                    <span className="text-white font-medium">
-                      {formatFuel(petrolFuelNum - hybridFuelNum)} L/100km
-                    </span>{' '}
-                    better efficiency on your driving.
-                  </p>
+                {hybridType === 'phev' ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                      <FuelStat
+                        label="On electric"
+                        value={`${Math.round(hybridBreakdown.electricKm).toLocaleString()} km`}
+                        detail={`${Math.round(hybridBreakdown.electricPercent)}% of driving`}
+                        accent="red"
+                      />
+                      <FuelStat
+                        label="On petrol"
+                        value={`${Math.round(hybridBreakdown.petrolKm).toLocaleString()} km`}
+                        detail={`${formatFuel(hybridFuelNum)} L/100km when burning fuel`}
+                        accent="red"
+                      />
+                      <FuelStat
+                        label="Petrol car"
+                        value={`${Math.round(petrolLitersPerYear).toLocaleString()} L`}
+                        detail={`${formatFuel(petrolFuelNum)} L/100km all year`}
+                        accent="slate"
+                      />
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      With {toNumber(avgTripKm)} km average trips and{' '}
+                      {chargingHabit === 'daily'
+                        ? 'daily'
+                        : chargingHabit === 'most'
+                          ? 'most-day'
+                          : chargingHabit === 'few'
+                            ? 'occasional'
+                            : 'rare'}{' '}
+                      charging, about{' '}
+                      <span className="text-white font-medium">
+                        {Math.round(hybridBreakdown.electricKm).toLocaleString()} km
+                      </span>{' '}
+                      run on the battery. The hybrid only burns{' '}
+                      <span className="text-white font-medium">
+                        {Math.round(hybridLitersPerYear).toLocaleString()} L
+                      </span>{' '}
+                      of fuel ({formatFuel(hybridBreakdown.effectiveLPer100km)} L/100km effective).
+                    </p>
+                  </>
                 ) : (
-                  <p className="text-sm text-slate-400 leading-relaxed">
-                    With these figures, the hybrid doesn&apos;t use less fuel than the petrol car.
-                  </p>
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                      <FuelStat
+                        label="Petrol car"
+                        value={`${Math.round(petrolLitersPerYear).toLocaleString()} L`}
+                        detail={`at ${formatFuel(petrolFuelNum)} L/100km`}
+                        accent="slate"
+                      />
+                      <FuelStat
+                        label="Mild hybrid"
+                        value={`${Math.round(hybridLitersPerYear).toLocaleString()} L`}
+                        detail={`${formatFuel(hybridBreakdown.effectiveLPer100km)} L/100km effective`}
+                        accent="red"
+                      />
+                    </div>
+                    {litersSavedPerYear > 0 ? (
+                      <p className="text-sm text-slate-300 leading-relaxed">
+                        The mild hybrid uses{' '}
+                        <span className="text-white font-medium">
+                          {Math.round(litersSavedPerYear).toLocaleString()} litres less
+                        </span>{' '}
+                        per year with your {drivingProfile} driving mix.
+                      </p>
+                    ) : (
+                      <p className="text-sm text-slate-400 leading-relaxed">
+                        With these figures, the hybrid doesn&apos;t use less fuel than the petrol car.
+                      </p>
+                    )}
+                  </>
                 )}
               </BreakdownCard>
 
               {/* 2 — Pump cost */}
               <BreakdownCard
-                title="At the pump"
-                subtitle={`Fuel at $${priceNum.toFixed(2)} per litre`}
+                title="Running costs"
+                subtitle={
+                  hybridType === 'phev'
+                    ? `Fuel $${priceNum.toFixed(2)}/L · Power $${toNumber(electricityPrice).toFixed(2)}/kWh`
+                    : `Fuel at $${priceNum.toFixed(2)} per litre`
+                }
               >
                 <div className="space-y-4 mb-4">
                   <CostBar
-                    label="Petrol"
+                    label="Petrol car"
                     amount={petrolCostPerYear}
                     maxAmount={Math.max(petrolCostPerYear, hybridCostPerYear, 1)}
                     accent="slate"
@@ -299,6 +446,17 @@ export default function HybridCalculator() {
                     maxAmount={Math.max(petrolCostPerYear, hybridCostPerYear, 1)}
                     accent="red"
                   />
+                  {hybridType === 'phev' && hybridBreakdown.electricCost > 0 && (
+                    <div className="flex gap-3 text-xs text-slate-500 pl-1">
+                      <span className="text-sky-400/90">
+                        {formatCurrency(hybridBreakdown.electricCost)} electric
+                      </span>
+                      <span>·</span>
+                      <span className="text-red-400/90">
+                        {formatCurrency(hybridBreakdown.fuelCost)} fuel
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-slate-300 leading-relaxed">
                   {annualSavings > 0 ? (
@@ -307,7 +465,7 @@ export default function HybridCalculator() {
                       <span className="text-emerald-400 font-medium">
                         {formatCurrency(annualSavings)}
                       </span>{' '}
-                      at the pump compared to petrol.
+                      in running costs compared to petrol.
                     </>
                   ) : (
                     <>
@@ -315,7 +473,7 @@ export default function HybridCalculator() {
                       <span className="text-red-400 font-medium">
                         {formatCurrency(Math.abs(annualSavings))}
                       </span>{' '}
-                      cheaper to fuel each year with these numbers.
+                      cheaper to run each year with these numbers.
                     </>
                   )}
                 </p>
@@ -481,6 +639,134 @@ export default function HybridCalculator() {
             </div>
           </div>
         </section>
+
+        <footer className="mt-10 sm:mt-12 text-center text-xs text-slate-600 leading-relaxed max-w-2xl mx-auto px-2">
+          Estimates based on the figures you enter. Actual savings depend on driving habits,
+          fuel and electricity prices, and vehicle condition. Not financial advice.
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function HybridTypeSelector({
+  value,
+  onChange,
+}: {
+  value: HybridType;
+  onChange: (type: HybridType) => void;
+}) {
+  const types: { id: HybridType; label: string; desc: string }[] = [
+    {
+      id: 'mhev',
+      label: 'MHEV',
+      desc: 'Mild hybrid — assists the engine, no plug-in charging',
+    },
+    {
+      id: 'phev',
+      label: 'PHEV',
+      desc: 'Plug-in hybrid — drives on electric when charged',
+    },
+  ];
+
+  return (
+    <div>
+      <label className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">
+        Hybrid type
+      </label>
+      <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950/70 rounded-xl border border-slate-800">
+        {types.map((type) => (
+          <button
+            key={type.id}
+            type="button"
+            onClick={() => onChange(type.id)}
+            className={`rounded-lg px-3 py-3 sm:py-3.5 text-left transition-all ${
+              value === type.id
+                ? 'bg-red-600 text-white shadow-lg shadow-red-900/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+            }`}
+          >
+            <span className="block text-sm font-semibold tracking-wide">{type.label}</span>
+            <span
+              className={`block text-[11px] mt-1 leading-snug ${
+                value === type.id ? 'text-red-100/80' : 'text-slate-500'
+              }`}
+            >
+              {type.desc}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  step = 1,
+  hint,
+}: {
+  label: string;
+  value: number | string;
+  onChange: (v: number | string) => void;
+  step?: number;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <label className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">
+        {label}
+      </label>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+        step={step}
+        min="0"
+        className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-slate-800 text-white text-base sm:text-lg rounded-lg border border-slate-700 focus:border-red-600 focus:outline-none transition"
+      />
+      {hint && <p className="text-gray-500 text-xs sm:text-sm mt-1 sm:mt-2">{hint}</p>}
+    </div>
+  );
+}
+
+function SegmentedControl<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  return (
+    <div>
+      <label className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">
+        {label}
+      </label>
+      <div
+        className="flex flex-wrap gap-1.5 p-1 bg-slate-950/70 rounded-xl border border-slate-800"
+        role="group"
+        aria-label={label}
+      >
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={`flex-1 min-w-[4.5rem] px-2 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              value === opt.value
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/60'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -496,7 +782,7 @@ function BreakdownCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-5 sm:p-6 backdrop-blur-sm">
+    <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-5 sm:p-6">
       <div className="mb-4">
         <h3 className="text-white text-lg font-medium tracking-tight">{title}</h3>
         <p className="text-slate-500 text-sm mt-0.5">{subtitle}</p>
