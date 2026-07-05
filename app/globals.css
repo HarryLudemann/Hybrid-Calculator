@@ -23,3 +23,72 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  .print-surface {
+    background: #ffffff !important;
+    color: #111827 !important;
+    padding: 0 !important;
+  }
+
+  .print-surface * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-surface [class*="bg-slate"],
+  .print-surface [class*="bg-red"],
+  .print-surface [class*="bg-emerald"] {
+    background: #ffffff !important;
+  }
+
+  .print-surface [class*="border-slate"],
+  .print-surface [class*="border-red"],
+  .print-surface [class*="border-emerald"] {
+    border-color: #d1d5db !important;
+  }
+
+  .print-surface [class*="text-white"],
+  .print-surface [class*="text-slate-"],
+  .print-surface [class*="text-gray-"],
+  .print-surface [class*="text-red-"],
+  .print-surface [class*="text-emerald-"],
+  .print-surface [class*="text-blue-"] {
+    color: #111827 !important;
+  }
+
+  .print-surface .text-red-400,
+  .print-surface .text-red-500,
+  .print-surface .text-red-600 {
+    color: #b91c1c !important;
+  }
+
+  .print-surface .text-emerald-400,
+  .print-surface .text-emerald-500 {
+    color: #047857 !important;
+  }
+
+  .print-surface .text-blue-400,
+  .print-surface .text-blue-500 {
+    color: #2563eb !important;
+  }
+}

@@ -162,8 +162,8 @@ export default function HybridCalculator() {
   const netFiveYearSavings = (annualSavings * 5) - priceDifference;
 
   return (
-    <div className="min-h-screen bg-slate-950 p-3 sm:p-6 md:p-12 pb-16 sm:pb-20">
-      <div className="max-w-5xl mx-auto w-full">
+    <div className="min-h-screen bg-slate-950 p-3 sm:p-6 md:p-12 pb-16 sm:pb-20 print-surface">
+      <div className="max-w-5xl mx-auto w-full print:max-w-none print:w-full">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-10 md:mb-12">
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-light text-white mb-2">
@@ -172,10 +172,17 @@ export default function HybridCalculator() {
           <p className="text-gray-400 text-xs sm:text-sm md:text-base tracking-wide">
             Compare running costs and see when a hybrid pays off
           </p>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="mt-5 inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-red-600 hover:text-white print-hidden"
+          >
+            Print summary
+          </button>
         </div>
 
         {/* Global Settings */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10 md:mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10 md:mb-12 print-hidden">
           <div className="bg-slate-900/50 rounded-lg p-4 sm:p-5 md:p-6 border border-slate-800 hover:border-slate-700 transition">
             <label className="text-white text-xs uppercase tracking-widest font-semibold mb-2 sm:mb-3 block">Annual km</label>
             <input
@@ -203,7 +210,7 @@ export default function HybridCalculator() {
         </div>
 
         {/* Vehicles Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-10 md:mb-12 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-10 md:mb-12 items-stretch print-hidden">
           {/* Vehicle A */}
           <VehicleInput
             name={vehicleAName}
@@ -300,7 +307,7 @@ export default function HybridCalculator() {
         </div>
 
         {/* How it adds up */}
-        <section className="relative isolate rounded-2xl border border-slate-800/80 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-950">
+        <section className="relative isolate rounded-2xl border border-slate-800/80 bg-gradient-to-b from-slate-900/90 via-slate-950 to-slate-950 print-break-inside-avoid">
           <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" aria-hidden="true">
             <div className="absolute -top-20 left-1/2 h-56 w-[28rem] -translate-x-1/2 rounded-full bg-red-600/10 blur-3xl" />
             <div className="absolute bottom-0 right-0 h-40 w-40 rounded-full bg-emerald-500/5 blur-3xl" />
@@ -539,7 +546,7 @@ export default function HybridCalculator() {
           </div>
         </section>
 
-        <footer className="mt-10 sm:mt-12 text-center text-xs text-slate-600 leading-relaxed max-w-2xl mx-auto px-2">
+        <footer className="mt-10 sm:mt-12 text-center text-xs text-slate-600 leading-relaxed max-w-2xl mx-auto px-2 print-hidden">
           Estimates based on the figures you enter. Actual savings depend on driving habits,
           fuel and electricity prices, and vehicle condition. Not financial advice.
         </footer>

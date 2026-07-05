@@ -18,7 +18,7 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Hybrid Calculator — Fuel Savings & Break-Even",
+  title: "Hybrid Calculator — Fuel Savings",
   description:
     "Compare hybrid vs petrol running costs. See annual fuel savings, 5-year net savings, and how long until the hybrid pays for itself.",
   keywords: [
